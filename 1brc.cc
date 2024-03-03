@@ -22,8 +22,9 @@ int main(int argc, char *agrv[]) {
     std::string city = line.substr(0, pos);
     double val = std::stod(line.substr(pos + 1));
 
-    if (records.contains(city)) {
-      auto &rec = records[city];
+    auto it = records.find(city);
+    if (it != records.end()) {
+      auto &rec = it->second;
       rec.max = std::max(rec.max, val);
       rec.min = std::min(rec.min, val);
       rec.sum += val;
