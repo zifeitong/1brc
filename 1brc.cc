@@ -10,8 +10,6 @@
 #include <sys/stat.h>
 #include <vector>
 
-constexpr int MAX_LINE_LEN = 128;
-
 struct Record {
   double min;
   double max;
@@ -26,13 +24,14 @@ int main(int argc, char *agrv[]) {
 
   size_t len = file_stat.st_size;
   const char *data = reinterpret_cast<const char *>(
-      mmap(nullptr, len + MAX_LINE_LEN, PROT_READ,
-           MAP_SHARED | MAP_HUGE_1GB | MAP_POPULATE, fd, 0));
+      mmap(nullptr, len, PROT_READ, MAP_SHARED | MAP_HUGE_1GB | MAP_POPULATE,
+           fd, 0));
+  const char* end = data + len;
 
   absl::flat_hash_map<std::string, Record> records;
   for (;;) {
     const char *newline_pos =
-        reinterpret_cast<const char *>(memchr(data, '\n', MAX_LINE_LEN));
+        reinterpret_cast<const char *>(memchr(data, '\n', end - data));
     if (!newline_pos) {
       break;
     }
