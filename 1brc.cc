@@ -2,8 +2,8 @@
 #include <format>
 #include <fstream>
 #include <iostream>
-#include <unordered_map>
 #include <vector>
+#include "absl/container/flat_hash_map.h"
 
 struct Record {
   double min;
@@ -15,11 +15,11 @@ struct Record {
 int main(int argc, char *agrv[]) {
   std::ifstream in("measurements.txt");
 
-  std::unordered_map<std::string, Record> records;
+  absl::flat_hash_map<std::string, Record> records;
 
   for (std::string line; std::getline(in, line);) {
     auto pos = line.rfind(';');
-    std::string city = line.substr(0, pos);
+    auto city = line.substr(0, pos);
     double val = std::stod(line.substr(pos + 1));
 
     auto it = records.find(city);
