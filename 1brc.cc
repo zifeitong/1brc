@@ -1,11 +1,16 @@
-#include <algorithm>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <vector>
 #include "absl/container/flat_hash_map.h"
-#include "absl/strings/numbers.h"
 #include "absl/log/check.h"
+#include "absl/strings/numbers.h"
+#include <algorithm>
+#include <fcntl.h>
+#include <format>
+#include <iostream>
+#include <linux/mman.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <vector>
+
+constexpr int MAX_LINE_LEN = 128;
 
 struct Record {
   double min;
@@ -15,12 +20,26 @@ struct Record {
 };
 
 int main(int argc, char *agrv[]) {
-  std::ifstream in("measurements.txt");
+  int fd = open("measurements.txt", O_RDONLY);
+  struct stat file_stat;
+  fstat(fd, &file_stat);
+
+  size_t len = file_stat.st_size;
+  const char *data = reinterpret_cast<const char *>(
+      mmap(nullptr, len + MAX_LINE_LEN, PROT_READ,
+           MAP_SHARED | MAP_HUGE_1GB | MAP_POPULATE, fd, 0));
 
   absl::flat_hash_map<std::string, Record> records;
+  for (;;) {
+    const char *newline_pos =
+        reinterpret_cast<const char *>(memchr(data, '\n', MAX_LINE_LEN));
+    if (!newline_pos) {
+      break;
+    }
 
-  for (std::string line_s; std::getline(in, line_s);) {
-    absl::string_view line(line_s);
+    absl::string_view line(data, newline_pos - data);
+    data = newline_pos + 1;
+
     auto pos = line.rfind(';');
     auto city = line.substr(0, pos);
 
