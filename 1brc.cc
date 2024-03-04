@@ -18,7 +18,7 @@ int main(int argc, char *agrv[]) {
   std::unordered_map<std::string, Record> records;
 
   for (std::string line; std::getline(in, line);) {
-    auto pos = line.find(';');
+    auto pos = line.rfind(';');
     std::string city = line.substr(0, pos);
     double val = std::stod(line.substr(pos + 1));
 
