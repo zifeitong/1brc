@@ -4,6 +4,8 @@
 #include <iostream>
 #include <vector>
 #include "absl/container/flat_hash_map.h"
+#include "absl/strings/numbers.h"
+#include "absl/log/check.h"
 
 struct Record {
   double min;
@@ -17,10 +19,13 @@ int main(int argc, char *agrv[]) {
 
   absl::flat_hash_map<std::string, Record> records;
 
-  for (std::string line; std::getline(in, line);) {
+  for (std::string line_s; std::getline(in, line_s);) {
+    absl::string_view line(line_s);
     auto pos = line.rfind(';');
     auto city = line.substr(0, pos);
-    double val = std::stod(line.substr(pos + 1));
+
+    double val;
+    CHECK(absl::SimpleAtod(line.substr(pos + 1), &val));
 
     auto it = records.find(city);
     if (it != records.end()) {
