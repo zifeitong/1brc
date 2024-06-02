@@ -5,9 +5,11 @@ git_override(
     commit = "a14ad3a64e7bf398ab48105aaa0348e032ac87f8",
 )
 
-bazel_dep(name = "abseil-cpp")
+bazel_dep(name = "abseil-cpp", version="20240116.2")
 git_override(
     module_name = "abseil-cpp",
     remote = "https://github.com/abseil/abseil-cpp.git",
     commit = "d06b82773e2306a99a8971934fb5845d5c04a170",
 )
+
+bazel_dep(name = "tcmalloc", version = "0.0.0-20240411-5ed309d")

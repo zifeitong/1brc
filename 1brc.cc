@@ -42,7 +42,7 @@ int main(int argc, char *agrv[]) {
     auto pos = line.rfind(';');
     auto city = line.substr(0, pos);
 
-    double val;
+    double val = 0.0;
     CHECK(absl::SimpleAtod(line.substr(pos + 1), &val));
 
     auto it = records.find(city);
