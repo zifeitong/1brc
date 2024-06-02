@@ -1,0 +1,13 @@
+bazel_dep(name = "hedron_compile_commands", dev_dependency = True)
+git_override(
+    module_name = "hedron_compile_commands",
+    remote = "https://github.com/hedronvision/bazel-compile-commands-extractor.git",
+    commit = "a14ad3a64e7bf398ab48105aaa0348e032ac87f8",
+)
+
+bazel_dep(name = "abseil-cpp")
+git_override(
+    module_name = "abseil-cpp",
+    remote = "https://github.com/abseil/abseil-cpp.git",
+    commit = "d06b82773e2306a99a8971934fb5845d5c04a170",
+)

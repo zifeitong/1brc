@@ -26,7 +26,7 @@ int main(int argc, char *agrv[]) {
   const char *data = reinterpret_cast<const char *>(
       mmap(nullptr, len, PROT_READ, MAP_SHARED | MAP_HUGE_1GB | MAP_POPULATE,
            fd, 0));
-  const char* end = data + len;
+  const char *end = data + len;
 
   absl::flat_hash_map<std::string, Record> records;
   for (;;) {
