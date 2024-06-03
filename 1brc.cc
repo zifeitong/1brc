@@ -1,6 +1,5 @@
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
-#include "absl/strings/numbers.h"
 #include <algorithm>
 #include <fcntl.h>
 #include <format>
@@ -16,6 +15,21 @@ struct Record {
   double sum;
   int count;
 };
+
+double ParseValue(absl::string_view s) {
+  double sign = 1.0;
+  if (s[0] == '-') {
+    s = s.substr(1);
+    sign = -1.0;
+  }
+
+  if (s.size() == 4) {
+    return sign * ((s[0] - '0') * 10.0 + (s[1] - '0') + (s[3] - '0') / 10.0);
+  } else {
+    CHECK(s.size() == 3);
+    return sign * ((s[0] - '0') + (s[2] - '0') / 10.0);
+  }
+}
 
 int main(int argc, char *agrv[]) {
   int fd = open("measurements.txt", O_RDONLY);
@@ -42,8 +56,7 @@ int main(int argc, char *agrv[]) {
     auto pos = line.rfind(';');
     auto city = line.substr(0, pos);
 
-    double val = 0.0;
-    CHECK(absl::SimpleAtod(line.substr(pos + 1), &val));
+    double val = ParseValue(line.substr(pos + 1));
 
     auto it = records.find(city);
     if (it != records.end()) {
