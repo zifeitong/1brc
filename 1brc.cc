@@ -8,6 +8,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <vector>
+#include "rapidhash.h"
 
 struct Record {
   double min;
@@ -31,6 +32,14 @@ double ParseValue(absl::string_view s) {
   }
 }
 
+struct StringHash {
+  using is_transparent = void;
+
+  size_t operator()(absl::string_view v) const {
+    return rapidhash(v.data(), v.size());
+  }
+};
+
 int main(int argc, char *agrv[]) {
   int fd = open("measurements.txt", O_RDONLY);
   struct stat file_stat;
@@ -42,7 +51,7 @@ int main(int argc, char *agrv[]) {
            fd, 0));
   const char *end = data + len;
 
-  absl::flat_hash_map<std::string, Record> records;
+  absl::flat_hash_map<std::string, Record, StringHash> records;
   for (;;) {
     const char *newline_pos =
         reinterpret_cast<const char *>(memchr(data, '\n', end - data));

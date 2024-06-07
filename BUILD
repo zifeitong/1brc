@@ -5,5 +5,8 @@ cc_binary(
     "@abseil-cpp//absl/log:check",
     "@abseil-cpp//absl/container:flat_hash_map",
   ],
-  srcs = ["1brc.cc"],
+  srcs = [
+    "1brc.cc",
+    "rapidhash.h"
+  ],
 )
