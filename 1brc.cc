@@ -1,13 +1,15 @@
-#include "absl/container/flat_hash_map.h"
-#include "absl/log/check.h"
-#include <algorithm>
 #include <fcntl.h>
-#include <format>
-#include <iostream>
 #include <linux/mman.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+
+#include <algorithm>
+#include <format>
+#include <iostream>
 #include <vector>
+
+#include "absl/container/flat_hash_map.h"
+#include "absl/log/check.h"
 #include "rapidhash.h"
 
 struct Record {
@@ -17,19 +19,31 @@ struct Record {
   int count;
 };
 
-double ParseValue(absl::string_view s) {
-  double sign = 1.0;
-  if (s[0] == '-') {
-    s = s.substr(1);
-    sign = -1.0;
+std::tuple<absl::string_view, double> ParseValue(absl::string_view line) {
+  auto pos = line.size() - 6;
+  double val;
+
+  if (line[pos] == ';') {
+    val = -((line[pos + 2] - '0') * 10.0 + (line[pos + 3] - '0') +
+            (line[pos + 5] - '0') / 10.0);
+    goto found;
   }
 
-  if (s.size() == 4) {
-    return sign * ((s[0] - '0') * 10.0 + (s[1] - '0') + (s[3] - '0') / 10.0);
-  } else {
-    CHECK(s.size() == 3);
-    return sign * ((s[0] - '0') + (s[2] - '0') / 10.0);
+  pos++;
+  if (line[pos] == ';') {
+    if (line[pos + 1] == '-') {
+      val = -((line[pos + 2] - '0') + (line[pos + 4] - '0') / 10.0);
+    } else {
+      val = (line[pos + 1] - '0') * 10.0 + (line[pos + 2] - '0') +
+            (line[pos + 4] - '0') / 10.0;
+    }
+    goto found;
   }
+  pos++;
+  val = (line[pos + 1] - '0') + (line[pos + 3] - '0') / 10.0;
+
+found:
+  return {line.substr(0, pos), val};
 }
 
 struct StringHash {
@@ -62,10 +76,7 @@ int main(int argc, char *agrv[]) {
     absl::string_view line(data, newline_pos - data);
     data = newline_pos + 1;
 
-    auto pos = line.rfind(';');
-    auto city = line.substr(0, pos);
-
-    double val = ParseValue(line.substr(pos + 1));
+    auto [city, val] = ParseValue(line);
 
     auto it = records.find(city);
     if (it != records.end()) {
