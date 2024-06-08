@@ -10,3 +10,8 @@ cc_binary(
     "rapidhash.h"
   ],
 )
+
+fdo_profile(
+    name = "fdo_profile",
+    profile = "fdo.profdata",
+)

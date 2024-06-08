@@ -13,37 +13,34 @@
 #include "rapidhash.h"
 
 struct Record {
-  double min;
-  double max;
-  double sum;
+  int min;
+  int max;
+  int sum;
   int count;
 };
 
-std::tuple<absl::string_view, double> ParseValue(absl::string_view line) {
-  auto pos = line.size() - 6;
-  double val;
+std::tuple<absl::string_view, int> ParseValue(absl::string_view line) {
+  auto tail = line.size() - 1;
 
-  if (line[pos] == ';') {
-    val = -((line[pos + 2] - '0') * 10.0 + (line[pos + 3] - '0') +
-            (line[pos + 5] - '0') / 10.0);
-    goto found;
+  if (line[tail - 5] == ';') {
+    return {
+        line.substr(0, tail - 5),
+        -(line[tail - 3] * 100 + line[tail - 2] * 10 + line[tail] - '0' * 111)};
   }
 
-  pos++;
-  if (line[pos] == ';') {
-    if (line[pos + 1] == '-') {
-      val = -((line[pos + 2] - '0') + (line[pos + 4] - '0') / 10.0);
+  if (line[tail - 4] == ';') {
+    if (line[tail - 3] == '-') {
+      return {line.substr(0, tail - 4),
+              -(line[tail - 2] * 10 + line[tail] - '0' * 11)};
     } else {
-      val = (line[pos + 1] - '0') * 10.0 + (line[pos + 2] - '0') +
-            (line[pos + 4] - '0') / 10.0;
+      return {
+          line.substr(0, tail - 4),
+          line[tail - 3] * 100 + line[tail - 2] * 10 + line[tail] - '0' * 111};
     }
-    goto found;
   }
-  pos++;
-  val = (line[pos + 1] - '0') + (line[pos + 3] - '0') / 10.0;
 
-found:
-  return {line.substr(0, pos), val};
+  return {line.substr(0, tail - 3),
+          line[tail - 2] * 10 + line[tail] - '0' * 11};
 }
 
 struct StringHash {
@@ -104,12 +101,14 @@ int main(int argc, char *agrv[]) {
   for (const auto &kv : results) {
     const auto &rec = kv.second;
     if (is_first) {
-      std::cout << std::format("{}={:.1f}/{:.1f}/{:.1f}", kv.first, rec.min,
-                               rec.sum / rec.count, rec.max);
+      std::cout << std::format("{}={:.1f}/{:.1f}/{:.1f}", kv.first,
+                               rec.min / 10.0, rec.sum / 10.0 / rec.count,
+                               rec.max / 10.0);
       is_first = false;
     } else {
-      std::cout << std::format(", {}={:.1f}/{:.1f}/{:.1f}", kv.first, rec.min,
-                               rec.sum / rec.count, rec.max);
+      std::cout << std::format(", {}={:.1f}/{:.1f}/{:.1f}", kv.first,
+                               rec.min / 10.0, rec.sum / 10.0 / rec.count,
+                               rec.max / 10.0);
     }
   }
 
