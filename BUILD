@@ -7,7 +7,7 @@ cc_binary(
   ],
   srcs = [
     "1brc.cc",
-    "rapidhash.h"
+    "o1hash.h",
   ],
 )
 

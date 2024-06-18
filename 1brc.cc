@@ -10,7 +10,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
-#include "rapidhash.h"
+#include "o1hash.h"
 
 struct Record {
   int min;
@@ -47,7 +47,7 @@ struct StringHash {
   using is_transparent = void;
 
   size_t operator()(absl::string_view v) const {
-    return rapidhash(v.data(), v.size());
+    return o1hash(v.data(), v.size());
   }
 };
 
@@ -58,7 +58,7 @@ int main(int argc, char *agrv[]) {
 
   size_t len = file_stat.st_size;
   const char *data = reinterpret_cast<const char *>(
-      mmap(nullptr, len, PROT_READ, MAP_SHARED | MAP_HUGE_1GB | MAP_POPULATE,
+      mmap(nullptr, len, PROT_READ, MAP_PRIVATE | MAP_HUGE_1GB | MAP_POPULATE,
            fd, 0));
   const char *end = data + len;
 
