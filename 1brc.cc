@@ -10,7 +10,10 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/log/check.h"
+#include "hwy/contrib/algo/find-inl.h"
 #include "o1hash.h"
+
+namespace hn = hwy::HWY_NAMESPACE;
 
 struct Record {
   int min;
@@ -57,21 +60,22 @@ int main(int argc, char *agrv[]) {
   fstat(fd, &file_stat);
 
   size_t len = file_stat.st_size;
-  const char *data = reinterpret_cast<const char *>(
+  const uint8_t *data = reinterpret_cast<const uint8_t *>(
       mmap(nullptr, len, PROT_READ, MAP_PRIVATE | MAP_HUGE_1GB | MAP_POPULATE,
            fd, 0));
-  const char *end = data + len;
+  const uint8_t *end = data + len;
 
   absl::flat_hash_map<std::string, Record, StringHash> records;
   for (;;) {
-    const char *newline_pos =
-        reinterpret_cast<const char *>(memchr(data, '\n', end - data));
-    if (!newline_pos) {
+    size_t count = end - data;
+    const hn::ScalableTag<uint8_t> kTag;
+    size_t newline_pos = hn::Find(kTag, static_cast<uint8_t>('\n'), data, count);
+    if (newline_pos == count) {
       break;
     }
 
-    absl::string_view line(data, newline_pos - data);
-    data = newline_pos + 1;
+    absl::string_view line(reinterpret_cast<const char *>(data), newline_pos);
+    data += newline_pos + 1;
 
     auto [city, val] = ParseValue(line);
 

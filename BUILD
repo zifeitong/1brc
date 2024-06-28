@@ -4,6 +4,7 @@ cc_binary(
     "@abseil-cpp//absl/strings",
     "@abseil-cpp//absl/log:check",
     "@abseil-cpp//absl/container:flat_hash_map",
+    "@highway//:algo",
   ],
   srcs = [
     "1brc.cc",
