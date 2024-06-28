@@ -22,30 +22,6 @@ struct Record {
   int count;
 };
 
-std::tuple<absl::string_view, int> ParseValue(absl::string_view line) {
-  auto tail = line.size() - 1;
-
-  if (line[tail - 5] == ';') {
-    return {
-        line.substr(0, tail - 5),
-        -(line[tail - 3] * 100 + line[tail - 2] * 10 + line[tail] - '0' * 111)};
-  }
-
-  if (line[tail - 4] == ';') {
-    if (line[tail - 3] == '-') {
-      return {line.substr(0, tail - 4),
-              -(line[tail - 2] * 10 + line[tail] - '0' * 11)};
-    } else {
-      return {
-          line.substr(0, tail - 4),
-          line[tail - 3] * 100 + line[tail - 2] * 10 + line[tail] - '0' * 111};
-    }
-  }
-
-  return {line.substr(0, tail - 3),
-          line[tail - 2] * 10 + line[tail] - '0' * 11};
-}
-
 struct StringHash {
   using is_transparent = void;
 
@@ -54,30 +30,46 @@ struct StringHash {
   }
 };
 
+const hn::ScalableTag<uint8_t> kTag;
+
 int main(int argc, char *agrv[]) {
   int fd = open("measurements.txt", O_RDONLY);
   struct stat file_stat;
   fstat(fd, &file_stat);
 
   size_t len = file_stat.st_size;
-  const uint8_t *data = reinterpret_cast<const uint8_t *>(
+  const char *data = reinterpret_cast<const char *>(
       mmap(nullptr, len, PROT_READ, MAP_PRIVATE | MAP_HUGE_1GB | MAP_POPULATE,
            fd, 0));
-  const uint8_t *end = data + len;
+  const char *end = data + len;
 
   absl::flat_hash_map<std::string, Record, StringHash> records;
   for (;;) {
     size_t count = end - data;
-    const hn::ScalableTag<uint8_t> kTag;
-    size_t newline_pos = hn::Find(kTag, static_cast<uint8_t>('\n'), data, count);
-    if (newline_pos == count) {
+    size_t pos = hn::Find(kTag, static_cast<uint8_t>(';'),
+                          reinterpret_cast<const uint8_t *>(data), count);
+    if (pos == count) {
       break;
     }
+    absl::string_view city(data, pos);
 
-    absl::string_view line(reinterpret_cast<const char *>(data), newline_pos);
-    data += newline_pos + 1;
+    data += pos + 1;
 
-    auto [city, val] = ParseValue(line);
+    int val;
+    if (data[1] == '.') {
+      val = data[0] * 10 + data[2] - '0' * 11;
+      data += 4;
+    } else if (data[2] == '.') {
+      if (data[0] == '-') {
+        val = -(data[1] * 10 + data[3] - '0' * 11);
+      } else {
+        val = data[0] * 100 + data[1] * 10 + data[3] - '0' * 111;
+      }
+      data += 5;
+    } else {
+      val = -(data[1] * 100 + data[2] * 10 + data[4] - '0' * 111);
+      data += 6;
+    }
 
     auto it = records.find(city);
     if (it != records.end()) {
