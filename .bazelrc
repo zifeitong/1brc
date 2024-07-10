@@ -1,13 +1,30 @@
-build --cxxopt -std=c++20
-build --copt -mllvm
-build --copt -vp-counters-per-site=4
-build --copt -march=native
-build --copt -Wno-unused-command-line-argument
-build --copt -Wno-ignored-optimization-argument
+build --cxxopt=-std=c++20
+build --copt=-mllvm
+build --copt=-vp-counters-per-site=4
+build --copt=-march=native
+build --copt=-Wno-unused-command-line-argument
+build --copt=-Wno-ignored-optimization-argument
 
 build --action_env=BAZEL_COMPILER=clang
 build --linkopt=-fuse-ld=lld
 build --action_env=CC=clang --host_action_env=CC=clang
 build --action_env=CXX=clang++ --host_action_env=CXX=clang++
 
-build --features=thin_lto
+#build --features=thin_lto
+
+# Full LTO
+#build --copt=-flto
+#build --linkopt=-flto
+
+# LLVM BOLT
+#build --linkopt=-Wl,--emit-relocs
+
+# Polly
+#build --copt=-Xclang
+#build --copt=-load
+#build --copt=-Xclang
+#build --copt=LLVMPolly.so
+#build --copt=-mllvm
+#build --copt=-polly
+#build --copt=-mllvm
+#build --copt=-polly-vectorizer=stripmine
