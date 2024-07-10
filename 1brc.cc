@@ -13,13 +13,15 @@
 #include "hwy/contrib/algo/find-inl.h"
 #include "o1hash.h"
 
+constexpr int kMaxCityNameLength = 64;
+
 namespace hn = hwy::HWY_NAMESPACE;
 
 struct Record {
-  int min;
-  int max;
   int sum;
   int count;
+  int min;
+  int max;
 };
 
 struct StringHash {
@@ -41,14 +43,13 @@ int main(int argc, char *agrv[]) {
   const char *data = reinterpret_cast<const char *>(
       mmap(nullptr, len, PROT_READ, MAP_PRIVATE | MAP_HUGE_1GB | MAP_POPULATE,
            fd, 0));
-  const char *end = data + len;
 
   absl::flat_hash_map<std::string, Record, StringHash> records;
   for (;;) {
-    size_t count = end - data;
-    size_t pos = hn::Find(kTag, static_cast<uint8_t>(';'),
-                          reinterpret_cast<const uint8_t *>(data), count);
-    if (pos == count) {
+    size_t pos =
+        hn::Find(kTag, static_cast<uint8_t>(';'),
+                 reinterpret_cast<const uint8_t *>(data), kMaxCityNameLength);
+    if (pos == kMaxCityNameLength) {
       break;
     }
     absl::string_view city(data, pos);
