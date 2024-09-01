@@ -6,12 +6,13 @@
 #include <algorithm>
 #include <format>
 #include <iostream>
-#include <vector>
 #include <string_view>
+#include <vector>
 
-#include "hwy/contrib/algo/find-inl.h"
-#include "o1hash.h"
 #include "cities.h"
+#include "hwy/contrib/algo/find-inl.h"
+#include "mph.h"
+#include "o1hash.h"
 
 constexpr int kMaxCityNameLength = 64;
 
@@ -65,33 +66,25 @@ int main(int argc, char *agrv[]) {
       data += 6;
     }
 
-    auto& rec = records[get_index(city)];
+    auto &rec = records[get_index(city)];
     rec.max = std::max(rec.max, val);
     rec.min = std::min(rec.min, val);
     rec.sum += val;
     rec.count += 1;
   }
 
-  std::vector<std::pair<std::string, Record>> results;
-  for (int i = 0; i < records.size(); ++i) {
-    results.emplace_back(get_name(i), records[i]);
-  }
-  std::sort(
-      results.begin(), results.end(),
-      [](const auto &lhs, const auto &rhs) { return lhs.first < rhs.first; });
-
   std::cout << "{";
 
   bool is_first = true;
-  for (const auto &kv : results) {
-    const auto &rec = kv.second;
+  for (int i = 0; i < records.size(); ++i) {
+    const auto &rec = records[i];
+    const auto &name = get_name(i);
     if (is_first) {
-      std::cout << std::format("{}={:.1f}/{:.1f}/{:.1f}", kv.first,
-                               rec.min / 10.0, rec.sum / 10.0 / rec.count,
-                               rec.max / 10.0);
+      std::cout << std::format("{}={:.1f}/{:.1f}/{:.1f}", name, rec.min / 10.0,
+                               rec.sum / 10.0 / rec.count, rec.max / 10.0);
       is_first = false;
     } else {
-      std::cout << std::format(", {}={:.1f}/{:.1f}/{:.1f}", kv.first,
+      std::cout << std::format(", {}={:.1f}/{:.1f}/{:.1f}", name,
                                rec.min / 10.0, rec.sum / 10.0 / rec.count,
                                rec.max / 10.0);
     }

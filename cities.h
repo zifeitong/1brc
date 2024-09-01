@@ -422,7 +422,7 @@ constexpr auto city_names = std::array{
     "İzmir"sv,
 };
 
-static constexpr auto table = std::array{
+static constexpr auto _table = std::array{
     std::pair(5341420935646521602ul, 0),
     std::pair(6312541146078118954ul, 1),
     std::pair(2454258209441881836ul, 2),
@@ -839,7 +839,7 @@ static constexpr auto table = std::array{
 };
 
 int get_index(std::string_view name) {
-  return mph::lookup<table>(o1hash(name.data(), name.size()));
+  return mph::lookup<_table>(o1hash(name.data(), name.size()));
 }
 
 std::string_view get_name(int index) { return city_names[index]; }

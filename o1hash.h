@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstring>
 /*
   Author: Wang Yi <godspeed_china@yeah.net>
   This is a quick and dirty hash function designed for O(1) speed.
@@ -8,6 +7,8 @@
   It samples first, middle and last 4 bytes to produce the hash.
   Do not use it in very serious applications as it's not secure.
 */
+
+#include <cstring>
 
 static inline uint32_t _o1r4(const uint8_t *p) {
   uint32_t v;
