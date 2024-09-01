@@ -4,6 +4,7 @@ build --copt=-vp-counters-per-site=4
 build --copt=-march=native
 build --copt=-Wno-unused-command-line-argument
 build --copt=-Wno-ignored-optimization-argument
+build --copt=-fbracket-depth=512
 
 build --action_env=BAZEL_COMPILER=clang
 build --linkopt=-fuse-ld=lld

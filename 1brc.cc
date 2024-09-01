@@ -7,11 +7,11 @@
 #include <format>
 #include <iostream>
 #include <vector>
+#include <string_view>
 
-#include "absl/container/flat_hash_map.h"
-#include "absl/log/check.h"
 #include "hwy/contrib/algo/find-inl.h"
 #include "o1hash.h"
+#include "cities.h"
 
 constexpr int kMaxCityNameLength = 64;
 
@@ -22,14 +22,6 @@ struct Record {
   int count;
   int min;
   int max;
-};
-
-struct StringHash {
-  using is_transparent = void;
-
-  size_t operator()(absl::string_view v) const {
-    return o1hash(v.data(), v.size());
-  }
 };
 
 const hn::ScalableTag<uint8_t> kTag;
@@ -44,7 +36,8 @@ int main(int argc, char *agrv[]) {
       mmap(nullptr, len, PROT_READ, MAP_PRIVATE | MAP_HUGE_1GB | MAP_POPULATE,
            fd, 0));
 
-  absl::flat_hash_map<std::string, Record, StringHash> records;
+  std::vector<Record> records(city_names.size());
+
   for (;;) {
     size_t pos =
         hn::Find(kTag, static_cast<uint8_t>(';'),
@@ -52,7 +45,7 @@ int main(int argc, char *agrv[]) {
     if (pos == kMaxCityNameLength) {
       break;
     }
-    absl::string_view city(data, pos);
+    std::string_view city(data, pos);
 
     data += pos + 1;
 
@@ -72,21 +65,16 @@ int main(int argc, char *agrv[]) {
       data += 6;
     }
 
-    auto it = records.find(city);
-    if (it != records.end()) {
-      auto &rec = it->second;
-      rec.max = std::max(rec.max, val);
-      rec.min = std::min(rec.min, val);
-      rec.sum += val;
-      rec.count += 1;
-    } else {
-      records[city] = {val, val, val, 1};
-    }
+    auto& rec = records[get_index(city)];
+    rec.max = std::max(rec.max, val);
+    rec.min = std::min(rec.min, val);
+    rec.sum += val;
+    rec.count += 1;
   }
 
   std::vector<std::pair<std::string, Record>> results;
-  for (const auto &kv : records) {
-    results.emplace_back(kv);
+  for (int i = 0; i < records.size(); ++i) {
+    results.emplace_back(get_name(i), records[i]);
   }
   std::sort(
       results.begin(), results.end(),

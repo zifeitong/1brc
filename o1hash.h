@@ -1,3 +1,6 @@
+#pragma once
+
+#include <cstring>
 /*
   Author: Wang Yi <godspeed_china@yeah.net>
   This is a quick and dirty hash function designed for O(1) speed.

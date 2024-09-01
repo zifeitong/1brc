@@ -9,6 +9,8 @@ cc_binary(
   srcs = [
     "1brc.cc",
     "o1hash.h",
+    "cities.h",
+    "mph.h",
   ],
 )
 
