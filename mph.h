@@ -31,7 +31,7 @@
 
 [![MIT Licence](http://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/license/mit)
 [![Version](https://img.shields.io/github/v/release/qlibs/mph)](https://github.com/qlibs/mph/releases)
-[![Build](https://img.shields.io/badge/build-green.svg)](https://godbolt.org/z/cnPv5TxhY)
+[![Build](https://img.shields.io/badge/build-green.svg)](https://godbolt.org/z/MsE4nnhvc)
 [![Try it online](https://img.shields.io/badge/try%20it-online-blue.svg)](https://godbolt.org/z/jcPPsbEvK)
 
 ### Use case
@@ -585,7 +585,7 @@ inline constexpr auto find =
     FetchContent_Declare(
       qlibs.mph
       GIT_REPOSITORY https://github.com/qlibs/mph
-      GIT_TAG v5.0.1
+      GIT_TAG v5.0.3
     )
 
     FetchContent_MakeAvailable(qlibs.mph)
@@ -612,7 +612,7 @@ inline constexpr auto find =
 #include <experimental/simd>
 #endif
 
-namespace mph::inline v5_0_1 {
+namespace mph::inline v5_0_3 {
 using i8   = __INT8_TYPE__;
 using u8   = __UINT8_TYPE__;
 using i16  = __INT16_TYPE__;
@@ -774,20 +774,21 @@ template<class T>
         }();
       }
       #endif
-      T t;
-      #pragma GCC diagnostic push
-      #pragma GCC diagnostic ignored "-Warray-bounds"
-      __builtin_memcpy(&t, data.data(), sizeof(t));
-      #pragma GCC diagnostic pop
+      T t{};
+      __builtin_memcpy(&t, data.data(), data.size() < sizeof(t) ? data.size() : sizeof(t));
       const auto index = T(data.size() * __CHAR_BIT__);
       #ifdef __BMI2__
       if constexpr (sizeof(t) <= sizeof(u32)) {
         return __builtin_ia32_bzhi_si(t, index);
       } else if constexpr (sizeof(t) <= sizeof(u64)) {
         return __builtin_ia32_bzhi_di(t, index);
-      } else
+      } else {
       #endif
-        return t & ((T(1) << index) - T(1));
+        constexpr T size = sizeof(T) * __CHAR_BIT__;
+        return index >= size ? t : t & ((T(1) << index) - T(1));
+      #ifdef __BMI2__
+      }
+      #endif
     }
   } else { // unsafe
     #pragma GCC diagnostic push
@@ -821,9 +822,9 @@ template<class T, T size = sizeof(T) * __CHAR_BIT__>
     // https://stackoverflow.com/questions/14547087/extracting-bits-with-a-single-multiplication
     // https://github.com/intel/compile-time-init-build/blob/main/include/lookup/pseudo_pext_lookup.hpp
     constexpr auto clz = [](auto x) {
-      decltype(x) n{};
+      decltype(x) n{sizeof(x) * __CHAR_BIT__ - 1};
       if (not x) return decltype(x)(sizeof(x) * __CHAR_BIT__);
-      while (x >>= 1u) n++;
+      while (x >>= 1u) n--;
       return n;
     };
     constexpr auto mbits = __builtin_popcountl(mask);
@@ -840,19 +841,19 @@ template<class T, T size = sizeof(T) * __CHAR_BIT__>
       }
       return result;
     }();
-    return (((a & mask) * coefficient) >> nbits) & ((T(1) << mbits) - T(1));
-  } else if (__builtin_is_constant_evaluated()) {
-    T result{};
-    T m = mask;
-    auto k = 0u;
-    for (T i{}; i < size; ++i) {
-      if (m & 1) result |= ((a >> i) & 1) << k++;
-      m >>= 1;
+    if constexpr(constexpr auto final_mask = ((T(1) << mbits) - T(1));
+      ((((mask) * coefficient) >> nbits) & final_mask) == final_mask) {
+      return (((a & mask) * coefficient) >> nbits) & final_mask;
     }
-    return result;
-  } else {
-    __builtin_unreachable();
   }
+  T result{};
+  T m = mask;
+  auto k = 0u;
+  for (T i{}; i < size; ++i) {
+    if (m & 1) result |= ((a >> i) & 1) << k++;
+    m >>= 1;
+  }
+  return result;
 }
 
 template<class T, u32 N = 1u>
@@ -912,11 +913,11 @@ struct traits {
       }());
 
       using mapped_type = decltype([] {
-             if constexpr (entries.size() < u8{}-1u) { return u8{}; }
-        else if constexpr (entries.size() < u16{}-1u) { return u16{}; }
-        else if constexpr (entries.size() < u32{}-1u) { return u32{}; }
-        else if constexpr (entries.size() < u64{}-1u) { return u64{}; }
-        else if constexpr (entries.size() < u128{}-1u) { return u128{}; }
+             if constexpr (entries.size() < u8(u8{}-1u)) { return u8{}; }
+        else if constexpr (entries.size() < u16(u16{}-1u)) { return u16{}; }
+        else if constexpr (entries.size() < u32(u32{}-1u)) { return u32{}; }
+        else if constexpr (entries.size() < u64(u64{}-1u)) { return u64{}; }
+        else if constexpr (entries.size() < u128(u128{}-1u)) { return u128{}; }
       }());
 
       utility::array<utility::compressed_pair<key_type, mapped_type>, entries.size()> entries_;
@@ -948,11 +949,11 @@ struct traits {
     } else if constexpr (not requires (u32 n) { entries[n].first; entries[n].second; }) { // array{1, 2, 3, ...}
       using key_type = type_traits::value_type_t<entries>;
       using mapped_type = decltype([] {
-             if constexpr (entries.size() < u8{}-1u) { return u8{}; }
-        else if constexpr (entries.size() < u16{}-1u) { return u16{}; }
-        else if constexpr (entries.size() < u32{}-1u) { return u32{}; }
-        else if constexpr (entries.size() < u64{}-1u) { return u64{}; }
-        else if constexpr (entries.size() < u128{}-1u) { return u128{}; }
+             if constexpr (entries.size() < u8(u8{}-1u)) { return u8{}; }
+        else if constexpr (entries.size() < u16(u16{}-1u)) { return u16{}; }
+        else if constexpr (entries.size() < u32(u32{}-1u)) { return u32{}; }
+        else if constexpr (entries.size() < u64(u64{}-1u)) { return u64{}; }
+        else if constexpr (entries.size() < u128(u128{}-1u)) { return u128{}; }
       }());
 
       utility::array<utility::compressed_pair<key_type, mapped_type>, entries.size()> entries_;
@@ -1369,6 +1370,7 @@ static_assert(([] {
 
   // mph::lookup
   {
+    using mph::u16;
     using mph::u32;
     using mph::utility::compressed_pair;
     using mph::utility::array;
@@ -1384,6 +1386,22 @@ static_assert(([] {
         auto lookup = mph::lookup<entries>;
 
         static_assert(2 == lookup(u32(4)));
+      }
+
+      {
+        constexpr const auto& entries = constant<[] {
+          std::array<int, 512> a{};
+          auto count = 0;
+          for (auto &v : a) v = count++;
+          return a;
+        }()>::value;
+
+        static_assert(0 == mph::lookup<entries>(u16(0)));
+        static_assert(1 == mph::lookup<entries>(u16(1)));
+        static_assert(128 == mph::lookup<entries>(u16(128)));
+        static_assert(255 == mph::lookup<entries>(u16(255)));
+        static_assert(256 == mph::lookup<entries>(u16(256)));
+        static_assert(entries.size()-1 == mph::lookup<entries>(u16(entries.size()-1)));
       }
 
       {

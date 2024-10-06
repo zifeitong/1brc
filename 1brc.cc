@@ -12,7 +12,6 @@
 #include "cities.h"
 #include "hwy/contrib/algo/find-inl.h"
 #include "mph.h"
-#include "o1hash.h"
 
 constexpr int kMaxCityNameLength = 64;
 
