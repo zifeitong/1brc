@@ -78,7 +78,7 @@ int main(int argc, char *agrv[]) {
 
     auto &rec = records[city_id(city)];
     rec.max = std::max(rec.max, val);
-    rec.min = std::min(rec.min, val);
+    rec.min = std::max(rec.min, -val);
     rec.sum += val;
     rec.count += 1;
   }
@@ -90,12 +90,12 @@ int main(int argc, char *agrv[]) {
     const auto &rec = records[i];
     const auto &name = city_name(i);
     if (is_first) {
-      std::cout << std::format("{}={:.1f}/{:.1f}/{:.1f}", name, rec.min / 10.0,
+      std::cout << std::format("{}={:.1f}/{:.1f}/{:.1f}", name, -rec.min / 10.0,
                                rec.sum / 10.0 / rec.count, rec.max / 10.0);
       is_first = false;
     } else {
       std::cout << std::format(", {}={:.1f}/{:.1f}/{:.1f}", name,
-                               rec.min / 10.0, rec.sum / 10.0 / rec.count,
+                               -rec.min / 10.0, rec.sum / 10.0 / rec.count,
                                rec.max / 10.0);
     }
   }
@@ -531,12 +531,12 @@ static constexpr hash_t o1hash(std::string_view s) {
       uint32_t first = (std::bit_cast<uint8_t>(s[3]) << 24) +
                        (std::bit_cast<uint8_t>(s[2]) << 16) +
                        (std::bit_cast<uint8_t>(s[1]) << 8) +
-                       std::bit_cast<uint8_t>(s[0]);
-      uint32_t middle = (std::bit_cast<uint8_t>(s[(len >> 1) + 1]) << 24) +
+                       std::bit_cast<uint8_t>(s[0]),
+               middle = (std::bit_cast<uint8_t>(s[(len >> 1) + 1]) << 24) +
                         (std::bit_cast<uint8_t>(s[len >> 1]) << 16) +
                         (std::bit_cast<uint8_t>(s[(len >> 1) - 1]) << 8) +
-                        std::bit_cast<uint8_t>(s[(len >> 1) - 2]);
-      uint32_t last = (std::bit_cast<uint8_t>(s[len - 1]) << 24) +
+                        std::bit_cast<uint8_t>(s[(len >> 1) - 2]),
+               last = (std::bit_cast<uint8_t>(s[len - 1]) << 24) +
                       (std::bit_cast<uint8_t>(s[len - 2]) << 16) +
                       (std::bit_cast<uint8_t>(s[len - 3]) << 8) +
                       std::bit_cast<uint8_t>(s[len - 4]);
