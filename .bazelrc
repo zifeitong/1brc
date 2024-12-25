@@ -1,4 +1,4 @@
-build --cxxopt=-std=c++20
+build --cxxopt=-std=c++23
 build --copt=-mllvm
 build --copt=-vp-counters-per-site=4
 build --copt=-march=native
