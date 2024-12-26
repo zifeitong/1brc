@@ -21,8 +21,8 @@ using std::literals::operator""sv;
 using hash_t = uint32_t;
 using Clock = std::chrono::high_resolution_clock;
 
-constexpr int kMaxCityNameLength = 64;
 const hn::ScalableTag<uint8_t> kTag;
+const auto broadcasted = Set(kTag, ';');
 
 struct Record {
   int sum;
@@ -65,6 +65,7 @@ int main(int argc, char *agrv[]) {
       end = data + chunk_size;
       while ((*end != '\n') && (end < file_end))
         ++end;
+
       threads.emplace_back(std::jthread{
           [tid, &records](const char *data, const char *end) {
             for (;;) {
@@ -72,37 +73,46 @@ int main(int argc, char *agrv[]) {
                 break;
               }
 
-              size_t pos = hn::Find(kTag, static_cast<uint8_t>(';'),
-                                    reinterpret_cast<const uint8_t *>(data),
-                                    kMaxCityNameLength);
-              if (pos == kMaxCityNameLength) {
-                break;
+              auto mask =
+                  Eq(broadcasted,
+                     LoadU(kTag, reinterpret_cast<const uint8_t *>(data)));
+              // Assuming city name length is small.
+              auto pos = FindFirstTrue(kTag, mask);
+              if (pos < 0) {
+                  break;
               }
-              std::string_view city(data, pos);
+              for (; pos >= 0; pos = FindFirstTrue(kTag, mask)) {
+                std::string_view city(data, pos);
+                data += pos + 1;
+                size_t offset = pos + 1; // Faster than data_orig
 
-              data += pos + 1;
-
-              int val;
-              if (data[1] == '.') {
-                val = data[0] * 10 + data[2] - '0' * 11;
-                data += 4;
-              } else if (data[2] == '.') {
-                if (data[0] == '-') {
-                  val = -(data[1] * 10 + data[3] - '0' * 11);
+                int val;
+                if (data[1] == '.') {
+                  val = data[0] * 10 + data[2] - '0' * 11;
+                  data += 4;
+                  offset += 4;
+                } else if (data[2] == '.') {
+                  if (data[0] == '-') {
+                    val = -(data[1] * 10 + data[3] - '0' * 11);
+                  } else {
+                    val = data[0] * 100 + data[1] * 10 + data[3] - '0' * 111;
+                  }
+                  data += 5;
+                  offset += 5;
                 } else {
-                  val = data[0] * 100 + data[1] * 10 + data[3] - '0' * 111;
+                  val = -(data[1] * 100 + data[2] * 10 + data[4] - '0' * 111);
+                  data += 6;
+                  offset += 6;
                 }
-                data += 5;
-              } else {
-                val = -(data[1] * 100 + data[2] * 10 + data[4] - '0' * 111);
-                data += 6;
-              }
 
-              auto &rec = records[tid][city_id(city)];
-              rec.max = std::max(rec.max, val);
-              rec.min = std::max(rec.min, -val);
-              rec.sum += val;
-              rec.count += 1;
+                auto &rec = records[tid][city_id(city)];
+                rec.max = std::max(rec.max, val);
+                rec.min = std::max(rec.min, -val);
+                rec.sum += val;
+                rec.count += 1;
+
+                mask = SlideMaskDownLanes(kTag, mask, offset);
+              }
             }
           },
           data, end});
@@ -140,8 +150,7 @@ int main(int argc, char *agrv[]) {
   std::cout << "}" << std::endl;
 
   auto tok = Clock::now();
-  std::cerr << "Time used: "
-            << std::chrono::duration<double>(tok - tik)
+  std::cerr << "Time used: " << std::chrono::duration<double>(tok - tik)
             << std::endl;
 
   return 0;
