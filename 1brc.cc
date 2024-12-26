@@ -8,6 +8,7 @@
 #include <format>
 #include <iostream>
 #include <string_view>
+#include <thread>
 #include <vector>
 
 #include "hwy/contrib/algo/find-inl.h"
@@ -42,52 +43,84 @@ int main(int argc, char *agrv[]) {
   struct stat file_stat;
   fstat(fd, &file_stat);
 
-  size_t len = file_stat.st_size;
+  size_t file_size = file_stat.st_size;
   const char *data = reinterpret_cast<const char *>(
-      mmap(nullptr, len, PROT_READ, MAP_PRIVATE | MAP_HUGE_1GB | MAP_POPULATE,
-           fd, 0));
+      mmap(nullptr, file_size, PROT_READ,
+           MAP_PRIVATE | MAP_HUGE_1GB | MAP_POPULATE, fd, 0));
 
-  std::vector<Record> records(city_count());
+  const auto n_threads = std::thread::hardware_concurrency();
+  std::vector<std::vector<Record>> records(n_threads,
+                                           std::vector<Record>{city_count()});
+  size_t chunk_size = file_size / n_threads;
 
-  for (;;) {
-    size_t pos =
-        hn::Find(kTag, static_cast<uint8_t>(';'),
-                 reinterpret_cast<const uint8_t *>(data), kMaxCityNameLength);
-    if (pos == kMaxCityNameLength) {
-      break;
+  {
+    std::vector<std::jthread> threads;
+    const char *end;
+    const char *file_end = data + file_size;
+    for (int tid = 0; tid < n_threads; ++tid) {
+      end = data + chunk_size;
+      while ((*end != '\n') && (end < file_end))
+        ++end;
+      threads.emplace_back(std::jthread{
+          [tid, &records](const char *data, const char *end) {
+            for (;;) {
+              if (data >= end) {
+                break;
+              }
+
+              size_t pos = hn::Find(kTag, static_cast<uint8_t>(';'),
+                                    reinterpret_cast<const uint8_t *>(data),
+                                    kMaxCityNameLength);
+              if (pos == kMaxCityNameLength) {
+                break;
+              }
+              std::string_view city(data, pos);
+
+              data += pos + 1;
+
+              int val;
+              if (data[1] == '.') {
+                val = data[0] * 10 + data[2] - '0' * 11;
+                data += 4;
+              } else if (data[2] == '.') {
+                if (data[0] == '-') {
+                  val = -(data[1] * 10 + data[3] - '0' * 11);
+                } else {
+                  val = data[0] * 100 + data[1] * 10 + data[3] - '0' * 111;
+                }
+                data += 5;
+              } else {
+                val = -(data[1] * 100 + data[2] * 10 + data[4] - '0' * 111);
+                data += 6;
+              }
+
+              auto &rec = records[tid][city_id(city)];
+              rec.max = std::max(rec.max, val);
+              rec.min = std::max(rec.min, -val);
+              rec.sum += val;
+              rec.count += 1;
+            }
+          },
+          data, end});
+      data = end + 1;
     }
-    std::string_view city(data, pos);
+  }
 
-    data += pos + 1;
-
-    int val;
-    if (data[1] == '.') {
-      val = data[0] * 10 + data[2] - '0' * 11;
-      data += 4;
-    } else if (data[2] == '.') {
-      if (data[0] == '-') {
-        val = -(data[1] * 10 + data[3] - '0' * 11);
-      } else {
-        val = data[0] * 100 + data[1] * 10 + data[3] - '0' * 111;
-      }
-      data += 5;
-    } else {
-      val = -(data[1] * 100 + data[2] * 10 + data[4] - '0' * 111);
-      data += 6;
+  // Gather results from all the threads.
+  for (int i = 1; i < records.size(); ++i) {
+    for (int j = 0; j < records[0].size(); ++j) {
+      records[0][j].count += records[i][j].count;
+      records[0][j].sum += records[i][j].sum;
+      records[0][j].max = std::max(records[0][j].max, records[i][j].max);
+      records[0][j].min = std::max(records[0][j].min, records[i][j].min);
     }
-
-    auto &rec = records[city_id(city)];
-    rec.max = std::max(rec.max, val);
-    rec.min = std::max(rec.min, -val);
-    rec.sum += val;
-    rec.count += 1;
   }
 
   std::cout << "{";
 
   bool is_first = true;
-  for (int i = 0; i < records.size(); ++i) {
-    const auto &rec = records[i];
+  for (int i = 0; i < records[0].size(); ++i) {
+    const auto &rec = records[0][i];
     const auto &name = city_name(i);
     if (is_first) {
       std::cout << std::format("{}={:.1f}/{:.1f}/{:.1f}", name, -rec.min / 10.0,

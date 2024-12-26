@@ -1,9 +1,12 @@
 run:
   bazel build -c opt 1brc --fdo_instrument=./
   ./bazel-bin/1brc > /dev/null
-  llvm-profdata merge *.profraw -o fdo.profdata 
+  llvm-profdata merge *.profraw -o fdo.profdata
   rm *.profraw
   bazel build -c opt 1brc --fdo_optimize=//:fdo_profile
+
+compile:
+  bazel build -c opt 1brc
 
 ## BOLT
 ## llvm-bolt bazel-bin/1brc -instrument -o bazel-bin/1brc.instrumented
