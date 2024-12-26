@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <format>
 #include <iostream>
 #include <string_view>
@@ -18,6 +19,7 @@ namespace hn = hwy::HWY_NAMESPACE;
 
 using std::literals::operator""sv;
 using hash_t = uint32_t;
+using Clock = std::chrono::high_resolution_clock;
 
 constexpr int kMaxCityNameLength = 64;
 const hn::ScalableTag<uint8_t> kTag;
@@ -39,6 +41,8 @@ static std::string_view city_name(int id);
 static std::size_t city_count();
 
 int main(int argc, char *agrv[]) {
+  auto tik = Clock::now();
+
   int fd = open("measurements.txt", O_RDONLY);
   struct stat file_stat;
   fstat(fd, &file_stat);
@@ -134,6 +138,11 @@ int main(int argc, char *agrv[]) {
   }
 
   std::cout << "}" << std::endl;
+
+  auto tok = Clock::now();
+  std::cerr << "Time used: "
+            << std::chrono::duration<double>(tok - tik)
+            << std::endl;
 
   return 0;
 }
