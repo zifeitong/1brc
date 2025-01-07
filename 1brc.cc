@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "hwy/contrib/algo/find-inl.h"
+#include "hwy/contrib/thread_pool/topology.h"
 #include "mph.h"
 
 namespace hn = hwy::HWY_NAMESPACE;
@@ -50,7 +51,7 @@ int main(int argc, char *agrv[]) {
   size_t file_size = file_stat.st_size;
   const char *data = reinterpret_cast<const char *>(
       mmap(nullptr, file_size, PROT_READ,
-           MAP_PRIVATE | MAP_HUGE_1GB | MAP_POPULATE, fd, 0));
+           MAP_PRIVATE | MAP_HUGE_1GB, fd, 0));
 
   const auto n_threads = std::thread::hardware_concurrency();
   std::vector<std::vector<Record>> records(n_threads,
@@ -68,6 +69,10 @@ int main(int argc, char *agrv[]) {
 
       threads.emplace_back(std::jthread{
           [tid, &records](const char *data, const char *end) {
+            hwy::LogicalProcessorSet lps;
+            lps.Set(tid);
+            hwy::SetThreadAffinity(lps);
+
             for (;;) {
               if (data >= end) {
                 break;
