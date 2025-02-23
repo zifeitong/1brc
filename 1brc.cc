@@ -44,6 +44,12 @@ static std::size_t city_count();
 int main(int argc, char *agrv[]) {
   auto tik = Clock::now();
 
+  const auto n_threads = std::thread::hardware_concurrency();
+
+  hwy::LogicalProcessorSet lps;
+  lps.Set(n_threads-1);
+  hwy::SetThreadAffinity(lps);
+
   int fd = open("measurements.txt", O_RDONLY);
   struct stat file_stat;
   fstat(fd, &file_stat);
@@ -53,7 +59,6 @@ int main(int argc, char *agrv[]) {
       mmap(nullptr, file_size, PROT_READ,
            MAP_PRIVATE | MAP_HUGE_1GB, fd, 0));
 
-  const auto n_threads = std::thread::hardware_concurrency();
   std::vector<std::vector<Record>> records(n_threads,
                                            std::vector<Record>{city_count()});
   size_t chunk_size = file_size / n_threads;
