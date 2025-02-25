@@ -33,7 +33,7 @@ struct Record {
 };
 
 // Returns id for given city name.
-static int city_id(std::string_view name);
+static int city_id(const char *name, size_t len);
 
 // Returns name for given city id.
 static std::string_view city_name(int id);
@@ -47,7 +47,7 @@ int main(int argc, char *agrv[]) {
   const auto n_threads = std::thread::hardware_concurrency();
 
   hwy::LogicalProcessorSet lps;
-  lps.Set(n_threads-1);
+  lps.Set(n_threads - 1);
   hwy::SetThreadAffinity(lps);
 
   int fd = open("measurements.txt", O_RDONLY);
@@ -56,8 +56,7 @@ int main(int argc, char *agrv[]) {
 
   size_t file_size = file_stat.st_size;
   const char *data = reinterpret_cast<const char *>(
-      mmap(nullptr, file_size, PROT_READ,
-           MAP_PRIVATE | MAP_HUGE_1GB, fd, 0));
+      mmap(nullptr, file_size, PROT_READ, MAP_PRIVATE | MAP_HUGE_1GB, fd, 0));
 
   std::vector<std::vector<Record>> records(n_threads,
                                            std::vector<Record>{city_count()});
@@ -86,15 +85,17 @@ int main(int argc, char *agrv[]) {
               auto mask =
                   Eq(broadcasted,
                      LoadU(kTag, reinterpret_cast<const uint8_t *>(data)));
+
               // Assuming city name length is small.
               auto pos = FindFirstTrue(kTag, mask);
               if (pos < 0) {
-                  break;
+                break;
               }
+
               for (; pos >= 0; pos = FindFirstTrue(kTag, mask)) {
-                std::string_view city(data, pos);
+                auto &rec = records[tid][city_id(data, pos)];
                 data += pos + 1;
-                size_t offset = pos + 1; // Faster than data_orig
+                size_t offset = pos + 1;
 
                 int val;
                 if (data[1] == '.') {
@@ -115,7 +116,6 @@ int main(int argc, char *agrv[]) {
                   offset += 6;
                 }
 
-                auto &rec = records[tid][city_id(city)];
                 rec.max = std::max(rec.max, val);
                 rec.min = std::max(rec.min, -val);
                 rec.sum += val;
@@ -582,10 +582,8 @@ static constexpr auto _names = std::array{
     "İzmir"sv,
 };
 
-static constexpr hash_t o1hash(std::string_view s) {
+static constexpr hash_t o1hash(const char *s, size_t len) {
   static_assert(HWY_IS_LITTLE_ENDIAN, "Only support little endian");
-
-  auto len = s.size();
 
   if consteval {
     if (len >= 4) {
@@ -593,31 +591,22 @@ static constexpr hash_t o1hash(std::string_view s) {
                        (std::bit_cast<uint8_t>(s[2]) << 16) +
                        (std::bit_cast<uint8_t>(s[1]) << 8) +
                        std::bit_cast<uint8_t>(s[0]),
-               middle = (std::bit_cast<uint8_t>(s[(len >> 1) + 1]) << 24) +
-                        (std::bit_cast<uint8_t>(s[len >> 1]) << 16) +
-                        (std::bit_cast<uint8_t>(s[(len >> 1) - 1]) << 8) +
-                        std::bit_cast<uint8_t>(s[(len >> 1) - 2]),
                last = (std::bit_cast<uint8_t>(s[len - 1]) << 24) +
                       (std::bit_cast<uint8_t>(s[len - 2]) << 16) +
                       (std::bit_cast<uint8_t>(s[len - 3]) << 8) +
                       std::bit_cast<uint8_t>(s[len - 4]);
-      return (first + last) * middle;
+      return first + last;
     } else if (len) {
       return (std::bit_cast<uint8_t>(s[0]) << 16) |
-             (std::bit_cast<uint8_t>(s[len >> 1]) << 8) |
              std::bit_cast<uint8_t>(s[len - 1]);
     }
   } else {
     if (len >= 4) {
-      auto *p = s.data();
-
-      uint32_t first = *reinterpret_cast<const uint32_t *>(p),
-               middle = *reinterpret_cast<const uint32_t *>(p + (len >> 1) - 2),
-               last = *reinterpret_cast<const uint32_t *>(p + len - 4);
-      return (first + last) * middle;
+      uint32_t first = *reinterpret_cast<const uint32_t *>(s),
+               last = *reinterpret_cast<const uint32_t *>(s + len - 4);
+      return first + last;
     } else if (len) {
       return (std::bit_cast<uint8_t>(s[0]) << 16) |
-             (std::bit_cast<uint8_t>(s[len >> 1]) << 8) |
              std::bit_cast<uint8_t>(s[len - 1]);
     }
   }
@@ -630,13 +619,13 @@ static constexpr auto _table = []() {
   size_t i = 0;
   for (auto &v : values) {
     auto name = _names[i++];
-    v = o1hash(name);
+    v = o1hash(name.data(), name.size());
   }
   return values;
 }();
 
-static int city_id(std::string_view name) {
-  return mph::lookup<_table>(o1hash(name));
+static int city_id(const char *name, size_t len) {
+  return mph::lookup<_table>(o1hash(name, len));
 }
 
 static std::string_view city_name(int id) { return _names[id]; }
