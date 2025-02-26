@@ -585,7 +585,7 @@ inline constexpr auto find =
     FetchContent_Declare(
       qlibs.mph
       GIT_REPOSITORY https://github.com/qlibs/mph
-      GIT_TAG v5.0.3
+      GIT_TAG v5.0.5
     )
 
     FetchContent_MakeAvailable(qlibs.mph)
@@ -612,7 +612,7 @@ inline constexpr auto find =
 #include <experimental/simd>
 #endif
 
-namespace mph::inline v5_0_3 {
+namespace mph::inline v5_0_5 {
 using i8   = __INT8_TYPE__;
 using u8   = __UINT8_TYPE__;
 using i16  = __INT16_TYPE__;
@@ -621,8 +621,10 @@ using i32  = __INT32_TYPE__;
 using u32  = __UINT32_TYPE__;
 using i64  = __INT64_TYPE__;
 using u64  = __UINT64_TYPE__;
+#if defined(__SIZEOF_INT128__)
 using i128 = __int128;
 using u128 = unsigned __int128;
+#endif
 
 namespace utility {
 template<class T1, class T2>
@@ -906,10 +908,12 @@ struct traits {
 
       using key_type = decltype([] {
             if constexpr (max_len <= sizeof(u8)) { return u8{}; }
-       else if constexpr (max_len <= sizeof(u16)) { return u16{}; }
-       else if constexpr (max_len <= sizeof(u32)) { return u32{}; }
-       else if constexpr (max_len <= sizeof(u64)) { return u64{}; }
-       else if constexpr (max_len <= sizeof(u128)) { return u128{}; }
+        else if constexpr (max_len <= sizeof(u16)) { return u16{}; }
+        else if constexpr (max_len <= sizeof(u32)) { return u32{}; }
+        else if constexpr (max_len <= sizeof(u64)) { return u64{}; }
+        #if defined(__SIZEOF_INT128__)
+        else if constexpr (max_len <= sizeof(u128)) { return u128{}; }
+        #endif
       }());
 
       using mapped_type = decltype([] {
@@ -917,7 +921,9 @@ struct traits {
         else if constexpr (entries.size() < u16(u16{}-1u)) { return u16{}; }
         else if constexpr (entries.size() < u32(u32{}-1u)) { return u32{}; }
         else if constexpr (entries.size() < u64(u64{}-1u)) { return u64{}; }
+        #if defined(__SIZEOF_INT128__)
         else if constexpr (entries.size() < u128(u128{}-1u)) { return u128{}; }
+        #endif
       }());
 
       utility::array<utility::compressed_pair<key_type, mapped_type>, entries.size()> entries_;
@@ -934,10 +940,12 @@ struct traits {
 
       using key_type = decltype([] {
             if constexpr (max_len <= sizeof(u8)) { return u8{}; }
-       else if constexpr (max_len <= sizeof(u16)) { return u16{}; }
-       else if constexpr (max_len <= sizeof(u32)) { return u32{}; }
-       else if constexpr (max_len <= sizeof(u64)) { return u64{}; }
-       else if constexpr (max_len <= sizeof(u128)) { return u128{}; }
+        else if constexpr (max_len <= sizeof(u16)) { return u16{}; }
+        else if constexpr (max_len <= sizeof(u32)) { return u32{}; }
+        else if constexpr (max_len <= sizeof(u64)) { return u64{}; }
+        #if defined(__SIZEOF_INT128__)
+        else if constexpr (max_len <= sizeof(u128)) { return u128{}; }
+        #endif
       }());
       using mapped_type = typename type_traits::value_type_t<entries>::second_type;
 
@@ -953,7 +961,9 @@ struct traits {
         else if constexpr (entries.size() < u16(u16{}-1u)) { return u16{}; }
         else if constexpr (entries.size() < u32(u32{}-1u)) { return u32{}; }
         else if constexpr (entries.size() < u64(u64{}-1u)) { return u64{}; }
+        #if defined(__SIZEOF_INT128__)
         else if constexpr (entries.size() < u128(u128{}-1u)) { return u128{}; }
+        #endif
       }());
 
       utility::array<utility::compressed_pair<key_type, mapped_type>, entries.size()> entries_;
@@ -1174,7 +1184,7 @@ template<const auto& entries> inline constexpr auto find =
   []<u8 probability = 50u>
     requires (probability >= 0u and probability <= 100u)
     #if not __has_include(<experimental/simd>)
-    and requires (entries.size() <= 64u)
+    and (entries.size() <= 64u)
     #endif
     ([[maybe_unused]] const auto& key, [[maybe_unused]] const auto&... ts) {
     using key_type = typename detail::traits<entries>::key_type;

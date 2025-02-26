@@ -19,7 +19,6 @@
 namespace hn = hwy::HWY_NAMESPACE;
 
 using std::literals::operator""sv;
-using hash_t = uint32_t;
 using Clock = std::chrono::high_resolution_clock;
 
 const hn::ScalableTag<uint8_t> kTag;
@@ -86,10 +85,17 @@ int main(int argc, char *agrv[]) {
                   Eq(broadcasted,
                      LoadU(kTag, reinterpret_cast<const uint8_t *>(data)));
 
-              // Assuming city name length is small.
               auto pos = FindFirstTrue(kTag, mask);
               if (pos < 0) {
-                break;
+                // Probe one more vector to find the end of city name.
+                mask = Eq(broadcasted,
+                          LoadU(kTag, reinterpret_cast<const uint8_t *>(
+                                          data + hn::Lanes(kTag))));
+                pos = FindFirstTrue(kTag, mask);
+                if (pos < 0) {
+                  break;
+                }
+                pos += hn::Lanes(kTag);
               }
 
               for (; pos >= 0; pos = FindFirstTrue(kTag, mask)) {
@@ -582,7 +588,7 @@ static constexpr auto _names = std::array{
     "İzmir"sv,
 };
 
-static constexpr hash_t o1hash(const char *s, size_t len) {
+static constexpr uint32_t o1hash(const char *s, size_t len) {
   static_assert(HWY_IS_LITTLE_ENDIAN, "Only support little endian");
 
   if consteval {
@@ -614,11 +620,14 @@ static constexpr hash_t o1hash(const char *s, size_t len) {
   return 0;
 }
 
-static constexpr auto _table = []() {
-  std::array<hash_t, std::size(_names)> values;
+static constexpr auto _table = []() consteval {
+  std::array<uint32_t, std::size(_names)> values;
   size_t i = 0;
   for (auto &v : values) {
     auto name = _names[i++];
+    if (name.size() > 2 * hn::Lanes(kTag)) {
+        throw "City name too long";
+    }
     v = o1hash(name.data(), name.size());
   }
   return values;
