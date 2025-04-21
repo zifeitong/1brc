@@ -1,5 +1,5 @@
 run:
-  bazel build -c opt 1brc --fdo_instrument=./
+  bazel --output_base=/tmp/bazel/output_fdo_instrument build -c opt 1brc --fdo_instrument=./
   ./bazel-bin/1brc > /dev/null
   llvm-profdata merge *.profraw -o fdo.profdata
   rm *.profraw

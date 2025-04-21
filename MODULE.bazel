@@ -2,16 +2,15 @@ bazel_dep(name = "hedron_compile_commands", dev_dependency = True)
 git_override(
     module_name = "hedron_compile_commands",
     remote = "https://github.com/hedronvision/bazel-compile-commands-extractor.git",
-    commit = "a14ad3a64e7bf398ab48105aaa0348e032ac87f8",
+    commit = "4f28899228fb3ad0126897876f147ca15026151e",
 )
 
-bazel_dep(name = "abseil-cpp", version="20250127.0")
-
-bazel_dep(name = "tcmalloc", version = "0.0.0-20240411-5ed309d")
-git_override(
-    module_name = "tcmalloc",
-    remote = "https://github.com/google/tcmalloc.git",
-    commit = "3e4f61d26cd3e06b780f92c4a258ddc466adefea",
-)
+bazel_dep(name = "abseil-cpp", version="20250127.1")
+bazel_dep(name = "tcmalloc", version = "0.0.0-20250331-43fcf6e")
 
 bazel_dep(name = "highway", version = "1.2.0")
+git_override(
+    module_name = "highway",
+    remote = "https://github.com/google/highway.git",
+    commit = "12b325bc1793dee68ab2157995a690db859fe9e0",
+)

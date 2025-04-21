@@ -626,7 +626,7 @@ static constexpr auto _table = []() consteval {
   for (auto &v : values) {
     auto name = _names[i++];
     if (name.size() > 2 * hn::Lanes(kTag)) {
-        throw "City name too long";
+      throw "City name too long";
     }
     v = o1hash(name.data(), name.size());
   }
